@@ -7,7 +7,7 @@ describe('async promise', () => {
   it('should work', (done) => {
     const result = 1;
     const pro1 = new Promise(function (resolve, reject) {
-      setTimeout(resolve,1000,1)
+      setTimeout(resolve,500,1)
     });
     const pro2 = pro1.then(val => {
         console.log(val);
@@ -20,6 +20,6 @@ describe('async promise', () => {
             console.log(val);
             done()
         });
-    },2000)
+    },500)
   });
 });
