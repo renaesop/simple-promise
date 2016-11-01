@@ -35,6 +35,7 @@ function traverse(ctx, keyword, item) {
       result = Promise.reject(e);
     }
     result[thenArraySymbol] = result[thenArraySymbol].concat(cbObject.next);
+    result[checkState]();
   }
 else if(cbObject.next.length){
     traverse(ctx, keyword, cbObject.next);
