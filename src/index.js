@@ -1,25 +1,15 @@
 /**
  * Created by fed on 2016/10/31.
  */
-const thenArraySymbol = Symbol();
-const stateSymbol = Symbol();
-const resolveSymbol = Symbol();
-const rejectSymbol = Symbol();
-const nextSymbol = Symbol();
-const cbSymbol = Symbol();
-const resultSymbol = Symbol();
-const checkState = Symbol();
-const waitingCallback = Symbol();
-const ctxSymbol = Symbol();
 const StateList = {
   constructed: 1,
   pending: 2,
-  resolved: 3,
-  rejected: 4,
+  resolved: 4,
+  rejected: 8,
 };
 const keywords = {
-  3: 'then',
-  4: 'catch',
+  4: 'then',
+  8: 'catch',
 };
 
 function traverse(ctx, keyword, item) {
@@ -27,7 +17,7 @@ function traverse(ctx, keyword, item) {
     if (cbObject.type === keyword) {
       let result;
       try {
-        result = cbObject.fn.call(ctx, ctx[resultSymbol]);
+        result = cbObject.fn.call(ctx, ctx._result);
         if (!(result instanceof Promise)) {
           result = Promise.resolve(result);
         }
@@ -36,8 +26,8 @@ function traverse(ctx, keyword, item) {
         result = Promise.reject(e);
       }
       cbObject.next.setCtx(result);
-      result[thenArraySymbol] = cbObject.next;
-      result[checkState]();
+      result._thenArray = cbObject.next;
+      result._checkState();
     }
     else if(cbObject.next.length){
       traverse(ctx, keyword, cbObject.next);
@@ -46,84 +36,85 @@ function traverse(ctx, keyword, item) {
 }
 
 class AddOnArray extends Array{
-  setCtx(ctx) {
-    this[ctxSymbol] = ctx;
-  }
   push(...args) {
     super.push(...args);
-    this[ctxSymbol] && this[ctxSymbol][checkState]();
-  }
-  modifiedConcat(args) {
-    this.forEach(arg => args.push(arg));
-    return args;
+    this._ctx && this._ctx._checkState();
   }
 }
 
+AddOnArray.factory = function () {
+  const ins = new AddOnArray();
+  ins.setCtx = function (ctx) {
+    this._ctx = ctx;
+  };
+  return ins;
+};
+
 class Promise {
   constructor(fn) {
-    this[thenArraySymbol] = new AddOnArray();
-    this[thenArraySymbol].setCtx(this);
-    this[stateSymbol] = StateList.constructed;
-    this[waitingCallback] = false;
-    this[resultSymbol] = null;
-    this[stateSymbol] = StateList.pending;
+    this._thenArray = AddOnArray.factory();
+    this._thenArray.setCtx(this);
+    this._state = StateList.constructed;
+    this._waitingCallback = false;
+    this._result = null;
+    this._state = StateList.pending;
     try {
-      fn.call(this, this[resolveSymbol].bind(this), this[rejectSymbol].bind(this));
+      fn.call(this, this._resolve.bind(this), this._reject.bind(this));
     }
     catch (e) {
-      this[rejectSymbol](e);
+      this._reject(e);
     }
   }
-  get [stateSymbol]() {
+  get _state() {
     return this.__state;
   }
-  set [stateSymbol](val) {
+  set _state(val) {
     this.__state = val;
-    this[checkState]();
+    this._checkState();
   }
-  [cbSymbol]() {
-    const keyword = keywords[this[stateSymbol]];
-    traverse(this, keyword, this[thenArraySymbol]);
-    this[thenArraySymbol].length = 0;
-    this[waitingCallback] = false;
+  _cb() {
+    const keyword = keywords[this._state];
+    traverse(this, keyword, this._thenArray);
+    this._thenArray.length = 0;
+    this._waitingCallback = false;
   }
-  [checkState]() {
-    if (this[waitingCallback]) return;
-    switch (this[stateSymbol]) {
+  _checkState() {
+    if (this._waitingCallback) return;
+    switch (this._state) {
       case StateList.resolved:
       case StateList.rejected:
         setTimeout(() => {
-          this[cbSymbol]();
+          this._cb();
         }, 0);
-        this[waitingCallback] = true;
+        this._waitingCallback = true;
         break;
       default:
         return;
     }
   }
-  [resolveSymbol](res) {
-    if (this[stateSymbol] === StateList.resolved || this[stateSymbol] === StateList.rejected) return;
-    this[resultSymbol] = res;
-    this[stateSymbol] = StateList.resolved;
+  _resolve(res) {
+    if (this._state & (StateList.resolved | StateList.rejected)) return;
+    this._result = res;
+    this._state = StateList.resolved;
   }
-  [rejectSymbol](err) {
-    if (this[stateSymbol] === StateList.resolved || this[stateSymbol] === StateList.rejected) return;
-    this[stateSymbol] = StateList.rejected;
-    this[resultSymbol] = err;
+  _reject(err) {
+    if (this._state & (StateList.resolved | StateList.rejected)) return;
+    this._result = err;
+    this._state = StateList.rejected;
   }
-  [nextSymbol](keyword, fn) {
+  _next(keyword, fn) {
     const obj = {
       type: keyword,
       fn,
-      next: new AddOnArray(),
+      next: AddOnArray.factory(),
     };
-    this[thenArraySymbol].push(obj);
+    this._thenArray.push(obj);
     const nextFunc = function (keyword, obj) {
       return function (fn) {
         const newObj = {
           type: keyword,
           fn,
-          next: new AddOnArray(),
+          next: AddOnArray.factory(),
         };
         obj.next.push(newObj);
         return {
@@ -138,10 +129,10 @@ class Promise {
     };
   }
   then(fn) {
-    return this[nextSymbol]('then', fn);
+    return this._next('then', fn);
   }
   catch(fn) {
-    return this[nextSymbol]('catch', fn);
+    return this._next('catch', fn);
   }
 }
 
