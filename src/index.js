@@ -10,6 +10,7 @@ const cbSymbol = Symbol();
 const resultSymbol = Symbol();
 const checkState = Symbol();
 const waitingCallback = Symbol();
+const ctxSymbol = Symbol();
 const StateList = {
   constructed: 1,
   pending: 2,
@@ -24,28 +25,44 @@ const keywords = {
 function traverse(ctx, keyword, item) {
   item.forEach(cbObject => {
     if (cbObject.type === keyword) {
-    let result;
-    try {
-      result = cbObject.fn.call(ctx, ctx[resultSymbol]);
-      if (!(result instanceof Promise)) {
-        result = Promise.resolve(result);
+      let result;
+      try {
+        result = cbObject.fn.call(ctx, ctx[resultSymbol]);
+        if (!(result instanceof Promise)) {
+          result = Promise.resolve(result);
+        }
       }
+      catch (e) {
+        result = Promise.reject(e);
+      }
+      cbObject.next.setCtx(result);
+      result[thenArraySymbol] = result[thenArraySymbol].modifiedConcat(cbObject.next);
+      result[checkState]();
     }
-    catch (e) {
-      result = Promise.reject(e);
+    else if(cbObject.next.length){
+      traverse(ctx, keyword, cbObject.next);
     }
-    result[thenArraySymbol] = result[thenArraySymbol].concat(cbObject.next);
-    result[checkState]();
+  });
+}
+
+class AddOnArray extends Array{
+  setCtx(ctx) {
+    this[ctxSymbol] = ctx;
   }
-else if(cbObject.next.length){
-    traverse(ctx, keyword, cbObject.next);
+  push(...args) {
+    super.push(...args);
+    this[ctxSymbol] && this[ctxSymbol][checkState]();
   }
-});
+  modifiedConcat(args) {
+    this.forEach(arg => args.push(arg));
+    return args;
+  }
 }
 
 class Promise {
   constructor(fn) {
-    this[thenArraySymbol] = [];
+    this[thenArraySymbol] = new AddOnArray();
+    this[thenArraySymbol].setCtx(this);
     this[stateSymbol] = StateList.constructed;
     this[waitingCallback] = false;
     this[resultSymbol] = null;
@@ -67,7 +84,7 @@ class Promise {
   [cbSymbol]() {
     const keyword = keywords[this[stateSymbol]];
     traverse(this, keyword, this[thenArraySymbol]);
-    this[thenArraySymbol] = [];
+    this[thenArraySymbol].length = 0;
     this[waitingCallback] = false;
   }
   [checkState]() {
@@ -77,12 +94,12 @@ class Promise {
       case StateList.rejected:
         setTimeout(() => {
           this[cbSymbol]();
-    }, 0);
-    this[waitingCallback] = true;
-    break;
-  default:
-    return;
-  }
+        }, 0);
+        this[waitingCallback] = true;
+        break;
+      default:
+        return;
+    }
   }
   [resolveSymbol](res) {
     if (this[stateSymbol] === StateList.resolved || this[stateSymbol] === StateList.rejected) return;
@@ -98,16 +115,15 @@ class Promise {
     const obj = {
       type: keyword,
       fn,
-      next: [],
+      next: new AddOnArray(),
     };
     this[thenArraySymbol].push(obj);
-    this[checkState]();
     const nextFunc = function (keyword, obj) {
       return function (fn) {
         const newObj = {
           type: keyword,
           fn,
-          next: [],
+          next: new AddOnArray(),
         };
         obj.next.push(newObj);
         return {
@@ -151,11 +167,11 @@ Promise.all = function (promiseList) {
     const result = [];
     promiseList.forEach((pro, index) => pro.then((res) => {
       result[index] = res;
-    pendingLength--;
-    if (pendingLength === 0) return resolve(result);
-  }).catch(e => {
+      pendingLength--;
+      if (pendingLength === 0) return resolve(result);
+    }).catch(e => {
       if (pendingLength > 0) reject(e);
-  }));
+    }));
   });
 };
 
@@ -166,11 +182,11 @@ Promise.race = function (promiseList) {
     if (promiseLength < 1) throw Error('At least one promise!');
     promiseList.forEach((pro, index) => pro.then((res) => {
       if (state === 0) resolve(res);
-    state = 1;
-  }).catch(e => {
+      state = 1;
+    }).catch(e => {
       if (promiseLength === 0) reject(e);
-    state = -1;
-  }));
+      state = -1;
+    }));
   });
 };
 
