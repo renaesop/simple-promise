@@ -25,14 +25,39 @@ function traverse(ctx, keyword, item) {
       catch (e) {
         result = Promise.reject(e);
       }
+      // 将未消耗的then chain传递给下一代，并做state check
       cbObject.next.setCtx(result);
       result._thenArray = cbObject.next;
       result._checkState();
     }
+    // 不匹配则到其子中查找
     else if(cbObject.next.length){
       traverse(ctx, keyword, cbObject.next);
     }
   });
+}
+
+// 用于生成 {then, catch}，使得链式调用then/catch，其存储时也是链式的
+// 也就是
+// interface nextInfo {
+//   type: 'then' | 'catch',
+//   fn: (res) => any,
+//   next: [nextInfo]
+// }
+//
+function nextFunc(keyword, obj) {
+  return function (fn) {
+    const newObj = {
+      type: keyword,
+      fn,
+      next: AddOnArray.factory(),
+    };
+    obj.next.push(newObj);
+    return {
+      then: nextFunc('then', newObj),
+      catch: nextFunc('catch', newObj),
+    };
+  };
 }
 
 class AddOnArray extends Array{
@@ -52,6 +77,7 @@ AddOnArray.factory = function () {
 
 class Promise {
   constructor(fn) {
+    // 用户存储then
     this._thenArray = AddOnArray.factory();
     this._thenArray.setCtx(this);
     this._state = StateList.constructed;
@@ -79,6 +105,7 @@ class Promise {
     this._waitingCallback = false;
   }
   _checkState() {
+    // 减少费时操作，合并起来一起做
     if (this._waitingCallback) return;
     switch (this._state) {
       case StateList.resolved:
@@ -109,27 +136,17 @@ class Promise {
       next: AddOnArray.factory(),
     };
     this._thenArray.push(obj);
-    const nextFunc = function (keyword, obj) {
-      return function (fn) {
-        const newObj = {
-          type: keyword,
-          fn,
-          next: AddOnArray.factory(),
-        };
-        obj.next.push(newObj);
-        return {
-          then: nextFunc('then', newObj),
-          catch: nextFunc('catch', newObj),
-        };
-      };
-    };
     return {
       then: nextFunc('then', obj),
       catch: nextFunc('catch', obj),
     };
   }
-  then(fn) {
-    return this._next('then', fn);
+  then(fn, fn1) {
+    let result = this._next('then', fn);
+    if (typeof fn1 === 'function') {
+      result = result.catch(fn1);
+    }
+    return result;
   }
   catch(fn) {
     return this._next('catch', fn);
