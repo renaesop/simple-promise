@@ -3,7 +3,7 @@
  */
 /**
  * 主要思路
- * 1. 向promise注册回调的回调，称呼为nextObjectArray
+ * 1. 向promise注册的回调，称呼为nextObjectArray
  * 2. promise的then方法可以被多次调用，也就是说nextObjectArray需要是数组，
  *    单个回调称为nextObject
  * 3. 可以向promise注册至少两种回调，也就是nextObject至少需要两个字段
