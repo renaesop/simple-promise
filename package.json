@@ -6,7 +6,8 @@
   "repository": "https://github.com/renaesop/simple-promise",
   "scripts": {
     "test": "npm run build && mocha",
-    "build": "gulp"
+    "build": "gulp",
+    "leak": "1>/dev/null npm run build && node --expose-gc benchmark/leak.js"
   },
   "keywords": [],
   "author": "",

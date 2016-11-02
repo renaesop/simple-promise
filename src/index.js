@@ -79,6 +79,7 @@ class NextObject {
 //   next: [nextInfo]
 // }
 //
+
 function nextFunc(nextType, parent) {
   return function (fn, fn1) {
     const nextObject = new NextObject(nextType, fn);
