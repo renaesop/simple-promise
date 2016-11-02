@@ -33,3 +33,50 @@
 - promise状态改变
 - promise.then被调用
 - nextObject中的fn执行完毕，生成新的promise，将nextObject传递给新的promise
+
+## benchmark & memory
+
+bluebird
+````
+--------start bluebird---------
+Start benchmark!
+Memory usage at start is
+{ rss: 33939456, heapTotal: 16773120, heapUsed: 4890344 }
+Memory usage at end is
+{ rss: 33964032, heapTotal: 16773120, heapUsed: 4890592 }
+Total time 420 ms!
+````
+
+promise
+````
+--------start then promise---------
+Start benchmark!
+Memory usage at start is
+{ rss: 32145408, heapTotal: 15724544, heapUsed: 4111272 }
+Memory usage at end is
+{ rss: 57315328, heapTotal: 40890368, heapUsed: 4122216 }
+Total time 366 ms!
+
+````
+this repo
+````
+--------start simple-promise---------
+Start benchmark!
+Memory usage at start is
+{ rss: 59658240, heapTotal: 42987520, heapUsed: 7120616 }
+Memory usage at end is
+{ rss: 62361600, heapTotal: 44036096, heapUsed: 6760264 }
+Total time 5138 ms!
+
+````
+
+es6 promise
+````
+--------start es---------
+Start benchmark!
+Memory usage at start is
+{ rss: 152707072, heapTotal: 135262208, heapUsed: 97403720 }
+Memory usage at end is
+{ rss: 1006002176, heapTotal: 988803072, heapUsed: 939538168 }
+Total time 8272 ms!
+````
