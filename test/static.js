@@ -7,7 +7,9 @@ describe('static methods', () => {
   describe('#then multiple args', () => {
     it('should work', (done) => {
       const reason = 'zzz';
-      Promise.reject(reason).then(() => {}, (err) => {
+      Promise.reject(reason).then(() =>{}, err=> {
+        throw err
+      }).then(() => {}, (err) => {
         if (reason === err) return done();
         done(err);
       });

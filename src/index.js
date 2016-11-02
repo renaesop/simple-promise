@@ -54,7 +54,7 @@ function traverse(promiseContext, callbackType, next) {
       result._checkState();
     }
     // 不匹配则到其子中查找
-    else if(callbackObject.next.length){
+    else if(!callbackObject.next.empty()){
       traverse(promiseContext, callbackType, callbackObject.next);
     }
   });
@@ -80,35 +80,46 @@ class NextObject {
 // }
 //
 function nextFunc(nextType, parent) {
-  return function (fn) {
+  return function (fn, fn1) {
     const nextObject = new NextObject(nextType, fn);
     parent.addChild(nextObject);
-    return {
+    const thenCatchObject = {
       then: nextFunc('then', nextObject),
       catch: nextFunc('catch', nextObject),
     };
+    if (nextType === 'then' && typeof fn1 === 'function') {
+      return thenCatchObject.catch(fn1);
+    }
+    return thenCatchObject;
   };
 }
 
 // 使用
-class NextObjectArray extends Array{
+class NextObjectArray{
   constructor(ctx) {
-    super();
+    this.data = [];
     if (ctx instanceof Promise) this._ctx = ctx;
   }
   push(...args) {
-    super.push(...args);
+    this.data.push(...args);
     this._ctx && this._ctx._checkState();
+  }
+  empty() {
+    return this.data.length === 0;
+  }
+  clear() {
+    this.data.length = 0;
+  }
+  forEach(...args) {
+    return this.data.forEach(...args);
+  }
+  setCtx(ctx) {
+    if (ctx instanceof Promise) this._ctx = ctx;
   }
 }
 
 NextObjectArray.factory = function (ctx) {
-  const ins = new NextObjectArray(ctx);
-  // 处理坑爹babel
-  ins.setCtx = function (ctx) {
-    if (ctx instanceof Promise) this._ctx = ctx;
-  };
-  return ins;
+  return new NextObjectArray(ctx);
 };
 
 class Promise {
@@ -134,9 +145,9 @@ class Promise {
     };
   }
   then(fn, fn1) {
-    let result = this._next('then', fn);
+    const result = this._next('then', fn);
     if (typeof fn1 === 'function') {
-      result = result.catch(fn1);
+      return result.catch(fn1);
     }
     return result;
   }
@@ -156,7 +167,7 @@ class Promise {
   _cb() {
     const keyword = keywords[this._state];
     traverse(this, keyword, this.next);
-    this.next.length = 0;
+    this.next.clear();
     this._waitingCallback = false;
   }
   // 在以下时刻：
