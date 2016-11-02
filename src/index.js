@@ -83,10 +83,18 @@ function nextFunc(nextType, parent) {
   return function (fn, fn1) {
     const nextObject = new NextObject(nextType, fn);
     parent.addChild(nextObject);
-    const thenCatchObject = {
-      then: nextFunc('then', nextObject),
-      catch: nextFunc('catch', nextObject),
-    };
+    const thenCatchObject = Object.create(Promise.prototype, {
+      then: {
+        enumerable: false,
+        writable: false,
+        value: nextFunc('then', nextObject)
+      },
+      catch: {
+        enumerable: false,
+        writable: false,
+        value: nextFunc('catch', nextObject)
+      },
+    });
     if (nextType === 'then' && typeof fn1 === 'function') {
       return thenCatchObject.catch(fn1);
     }
@@ -137,12 +145,20 @@ class Promise {
     }
   }
   _next(keyword, fn) {
-    const obj = new NextObject(keyword, fn);
-    this.next.push(obj);
-    return {
-      then: nextFunc('then', obj),
-      catch: nextFunc('catch', obj),
-    };
+    const nextObject = new NextObject(keyword, fn);
+    this.next.push(nextObject);
+    return Object.create(Promise.prototype, {
+      then: {
+        enumerable: true,
+        writable: false,
+        value: nextFunc('then', nextObject)
+      },
+      catch: {
+        enumerable: true,
+        writable: false,
+        value: nextFunc('catch', nextObject)
+      },
+    });
   }
   then(fn, fn1) {
     const result = this._next('then', fn);
