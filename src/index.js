@@ -35,6 +35,16 @@ const keywords = {
   4: 'catch',
 };
 
+const asyncFn = function() {
+  if (typeof process === 'object' && process !== null && typeof(process.nextTick) === 'function')
+    return process.nextTick
+  if (typeof(setImmediate) === 'function')
+    return setImmediate
+  return setTimeout
+}()
+
+
+
 function traverse(promiseContext, callbackType, next) {
   next.forEach(callbackObject => {
     if (callbackObject.type === callbackType) {
@@ -180,9 +190,9 @@ class Promise {
     // 减少费时的递归操作，凑起来做
     if (this._waitingCallback) return;
     if (this._state & (StateList.resolved | StateList.rejected)) {
-      setTimeout(() => {
+      asyncFn(() => {
         this._cb();
-      }, 0);
+      });
       this._waitingCallback = true;
     }
   }
