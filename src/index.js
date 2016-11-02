@@ -74,7 +74,7 @@ class NextObject {
   constructor(type, fn, ctx) {
     this.type = type;
     this.fn = fn;
-    this.next = NextObjectArray.factory(ctx);
+    this.next = new NextObjectArray(ctx);
   }
   addChild(nextObject) {
     this.next.push(nextObject);
@@ -117,10 +117,10 @@ function nextFunc(nextType, parent) {
 class NextObjectArray{
   constructor(ctx) {
     this.data = [];
-    if (ctx instanceof Promise) this._ctx = ctx;
+    this._ctx = ctx;
   }
-  push(...args) {
-    this.data.push(...args);
+  push(arg) {
+    this.data.push(arg);
     this._ctx && this._ctx._checkState();
   }
   empty() {
@@ -129,22 +129,18 @@ class NextObjectArray{
   clear() {
     this.data.length = 0;
   }
-  forEach(...args) {
-    return this.data.forEach(...args);
+  forEach(fn) {
+    return this.data.forEach(fn);
   }
   setCtx(ctx) {
-    if (ctx instanceof Promise) this._ctx = ctx;
+    this._ctx = ctx;
   }
 }
-
-NextObjectArray.factory = function (ctx) {
-  return new NextObjectArray(ctx);
-};
 
 class Promise {
   constructor(fn) {
     // next是用于存储then/catch的列表
-    this.next = NextObjectArray.factory(this);
+    this.next = new NextObjectArray(this);
     this._waitingCallback = false;
     this._result = null;
     this._state = StateList.pending;
