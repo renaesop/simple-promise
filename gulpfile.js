@@ -3,11 +3,11 @@
  */
 var gulp = require('gulp');
 var babel = require('gulp-babel');
+var readFileSync = require('fs').readFileSync;
+var config = JSON.parse(readFileSync('./.babelrc').toString());
 
 gulp.task('default', function() {
   return gulp.src('src/**/*.js')
-    .pipe(babel({
-      presets: ['es2015']
-    }))
+    .pipe(babel(config))
     .pipe(gulp.dest('lib'));
 });
