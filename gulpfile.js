@@ -1,10 +1,10 @@
 /**
  * Created by fed on 2016/11/1.
  */
-const gulp = require('gulp');
-const babel = require('gulp-babel');
+var gulp = require('gulp');
+var babel = require('gulp-babel');
 
-gulp.task('default', () => {
+gulp.task('default', function() {
   return gulp.src('src/**/*.js')
     .pipe(babel({
       presets: ['es2015']

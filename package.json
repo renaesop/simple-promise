@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "lib/index.js",
+  "repository": "https://github.com/renaesop/simple-promise",
   "scripts": {
     "test": "npm run build && mocha",
     "build": "gulp"
