@@ -4,7 +4,12 @@
 var exec = require('child_process').execSync;
 var path = require('path');
 
-(['bluebird.js','then-promise.js', 'this.js', 'es.js']).map(function (item) {
+([
+  'bluebird.js',
+  'then-promise.js',
+  'this.js',
+  'es.js',
+]).map(function (item) {
   return path.join(__dirname, item);
 }).forEach(function (moduleName) {
   exec('node --expose-gc ' + moduleName, {

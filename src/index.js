@@ -35,6 +35,9 @@ const keywords = {
   4: 'catch',
 };
 
+let LAST_ERROR;
+const IS_ERROR = Symbol();
+
 const asyncFn = function() {
   if (typeof process === 'object' && process !== null && typeof(process.nextTick) === 'function')
     return process.nextTick
@@ -43,20 +46,17 @@ const asyncFn = function() {
   return setTimeout
 }()
 
-
-
 function traverse(promiseContext, callbackType, next) {
   next.forEach(callbackObject => {
     if (callbackObject.type === callbackType) {
-      let result;
-      try {
-        result = callbackObject.fn.call(promiseContext, promiseContext._result);
-        if (!(result instanceof Promise)) {
-          result = Promise.resolve(result);
-        }
+      let result = tryCallOne(callbackObject.fn, promiseContext._result);
+      if (result === IS_ERROR) {
+        result = Promise.reject(LAST_ERROR);
       }
-      catch (e) {
-        result = Promise.reject(e);
+      else if (!(result instanceof Promise)) {
+        result = new Promise(function (resolve) {
+          resolve(result)
+        });
       }
       // 将未消耗的nextObject chain传递给下一代，并做state check
       callbackObject.next.setCtx(result);
@@ -70,11 +70,29 @@ function traverse(promiseContext, callbackType, next) {
   });
 }
 
+function tryCallOne(fn, a) {
+  try {
+    return fn(a);
+  } catch (ex) {
+    LAST_ERROR = ex;
+    return IS_ERROR;
+  }
+}
+
+function tryCallTwo(fn, a, b) {
+  try {
+    return fn(a, b);
+  } catch (ex) {
+    LAST_ERROR = ex;
+    return IS_ERROR;
+  }
+}
+
 class NextObject {
-  constructor(type, fn, ctx) {
+  constructor(type, fn) {
     this.type = type;
     this.fn = fn;
-    this.next = new NextObjectArray(ctx);
+    this.next = new NextObjectArray();
   }
   addChild(nextObject) {
     this.next.push(nextObject);
@@ -138,18 +156,14 @@ class NextObjectArray{
 }
 
 class Promise {
-  constructor(fn) {
+  constructor(fn ,next) {
     // next是用于存储then/catch的列表
-    this.next = new NextObjectArray(this);
+    this.next = next || new NextObjectArray(this);
     this._waitingCallback = false;
     this._result = null;
     this._state = StateList.pending;
-    try {
-      fn.call(this, this._resolve.bind(this), this._reject.bind(this));
-    }
-    catch (e) {
-      this._reject(e);
-    }
+    const result = tryCallTwo(fn, this._resolve.bind(this), this._reject.bind(this));
+    result === IS_ERROR && this._reject(e);
   }
   _next(keyword, fn) {
     const nextObject = new NextObject(keyword, fn);
