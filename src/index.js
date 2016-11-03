@@ -35,8 +35,9 @@ const keywords = {
   4: '_reject',
 };
 
-let LAST_ERROR;
-const IS_ERROR = Symbol();
+var LAST_ERROR;
+const IS_ERROR = 'IS_ERROR';
+const IS_FINISHED = 'IS_FINISHED';
 const noop = () => {};
 
 const asyncFn = function() {
@@ -45,7 +46,8 @@ const asyncFn = function() {
   if (typeof(setImmediate) === 'function')
     return setImmediate
   return setTimeout
-}()
+}();
+
 
 function tryCallOne(fn, a) {
   try {
@@ -101,7 +103,7 @@ class Promise {
     const nextPromise = new Promise(noop);
     nextPromise._awakeType = keyword;
     nextPromise._awakeFunc = fn;
-    if (this._state & (StateList.resolved | StateList.rejected)) {
+    if (this._state !== StateList.pending) {
       asyncFn(() => {
         nextPromise._awake(keywords[this._state], this._result);
       });
@@ -118,21 +120,6 @@ class Promise {
     if (fn === undefined) return this;
     return this._next(keywords[StateList.rejected], fn);
   }
-  get _state() {
-    return this.__state;
-  }
-  // 更改promise的state，触发一次checkState
-  set _state(val) {
-    this.__state = val;
-    this._checkState();
-  }
-  // 找到nextObject chain第一个符合特征的进行执行
-  // 执行完之后，要把nextObjectArray清空
-  _cb() {
-    const keyword = keywords[this._state];
-    this.next.forEach(pro => pro._awake(keyword, this._result));
-    this.next.length = 0;
-  }
   // 在以下时刻：
   //  a. 在promise内部状态改变的时刻
   //  b. 新增then/catch之时
@@ -140,14 +127,16 @@ class Promise {
   // 可能需要去执行this.next里面的回调函数
   //
   _checkState() {
-    if (this._state & (StateList.resolved | StateList.rejected)) {
+    if (this._state !== StateList.pending) {
       asyncFn(() => {
-        this._cb();
+        const keyword = keywords[this._state];
+        this.next.forEach(pro => pro._awake(keyword, this._result));
+        this.next.length = 0;
       });
     }
   }
   _resolve(res) {
-    if (this._state & (StateList.resolved | StateList.rejected)) return;
+    if (this._state !== StateList.pending)  return;
     if (res === this) {
       throw TypeError('`promise` and `x` cannot refer to the same object');
     }
@@ -163,20 +152,20 @@ class Promise {
       try {
         const then = res.then;
         if (typeof then === 'function') {
-            then.call(res, (result) => {
-                if (!invoked){
-                  invoked = true;
-                  this._resolve(result);
-                }
-            },
-            err => {
-                if(!invoked){
-                  invoked = true;
-                  this._reject(err)
-                }
-            }
-            );
-            return;
+          then.call(res, function (result) {
+              if (!invoked) {
+                invoked = true;
+                this._resolve(result);
+              }
+            }.bind(this),
+            function (err) {
+              if (!invoked) {
+                invoked = true;
+                this._reject(err)
+              }
+            }.bind(this)
+          );
+          return;
         }
       }
       catch (e) {
@@ -188,11 +177,13 @@ class Promise {
     }
     this._result = res;
     this._state = StateList.resolved;
+    this._checkState();
   }
   _reject(err) {
     if (this._state & (StateList.resolved | StateList.rejected)) return;
     this._result = err;
     this._state = StateList.rejected;
+    this._checkState();
   }
 }
 

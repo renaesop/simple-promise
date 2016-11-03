@@ -9,6 +9,7 @@ var path = require('path');
   'then-promise.js',
   'this.js',
   'es.js',
+  'mini-promise.js',
 ]).map(function (item) {
   return path.join(__dirname, item);
 }).forEach(function (moduleName) {

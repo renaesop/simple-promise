@@ -1,7 +1,7 @@
 /**
  * Created by fed on 2016/11/3.
  */
-const Promise = require('../src');
+const Promise = require('../');
 
 const adapter = {
   resolved: Promise.resolve,

@@ -20,6 +20,7 @@
     "gulp": "^3.9.1",
     "gulp-babel": "^6.1.2",
     "lodash.create": "^4.2.0",
+    "mimi-promise": "git+https://github.com/FTAndy/mimi-promise.git",
     "mocha": "^3.1.2",
     "promise": "^7.1.1",
     "promises-aplus-tests": "^2.1.2"
