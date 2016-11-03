@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "repository": "https://github.com/renaesop/simple-promise",
   "scripts": {
-    "test": "npm run build && mocha",
+    "test": "npm run build && mocha test/a-plus.js",
     "build": "gulp",
     "bench": "1>/dev/null npm run build && node benchmark/bench.js"
   },
@@ -21,6 +21,7 @@
     "gulp-babel": "^6.1.2",
     "lodash.create": "^4.2.0",
     "mocha": "^3.1.2",
-    "promise": "^7.1.1"
+    "promise": "^7.1.1",
+    "promises-aplus-tests": "^2.1.2"
   }
 }
