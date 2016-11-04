@@ -4,7 +4,7 @@
 
 [![Build Status](https://travis-ci.org/renaesop/simple-promise.svg?branch=master)](https://travis-ci.org/renaesop/simple-promise)
 [![Build status](https://ci.appveyor.com/api/projects/status/ikn39wiu3fbh08uy/branch/master?svg=true)](https://ci.appveyor.com/project/renaesop/simple-promise/branch/master)
-[![Promise/A+ Logo](https://promisesaplus.com/)](https://promisesaplus.com/assets/logo-small.png)
+[![Promise/A+ Logo](https://promisesaplus.com/assets/logo-small.png)](https://promisesaplus.com/)
 
 
 ## 实现的主要思路
