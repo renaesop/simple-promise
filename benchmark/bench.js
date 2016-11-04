@@ -5,9 +5,9 @@ var exec = require('child_process').execSync;
 var path = require('path');
 
 ([
+  'this.js',
   'bluebird.js',
   'then-promise.js',
-  'this.js',
   'es.js',
   'mini-promise.js',
 ]).map(function (item) {
