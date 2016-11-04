@@ -29,6 +29,7 @@ const StateList = {
   pending: 1,
   resolved: 2,
   rejected: 4,
+  delegated: 8,
 };
 const keywords = {
   2: '_resolve',
@@ -67,73 +68,95 @@ function tryCallTwo(fn, a, b) {
   }
 }
 
+function resolve(ctx, fn) {
+  if (fn === noop) return;
+  const result = tryCallTwo(fn, ctx._resolve.bind(ctx), ctx._reject.bind(ctx));
+  result === IS_ERROR && ctx._reject(LAST_ERROR);
+}
+
+function tryResolve(ctx, result) {
+
+}
+
+// 在以下时刻：
+//  a. 在promise内部状态改变的时刻
+//  b. 新增then/catch之时
+//  c. then/catch返回之后，生成新的promise，将后续的then/catch传递给promise
+// 可能需要去执行this.next里面的回调函数
+//
+function _checkState(ctx) {
+  if ((ctx._state !== StateList.pending) && ctx._nextCount) {
+    asyncFn(function (){
+      for (var i = 0; i < ctx.next.length; i++) {
+        ctx.next[i]._awake(ctx._state, ctx._result);
+      }
+      ctx.next = null;
+      ctx._nextCount = false;
+    });
+  }
+}
+
+function _next(self, keyword, fn) {
+  while (self._state === StateList.delegated) {
+    self = self._result;
+  }
+  const nextPromise = new Promise(noop);
+  nextPromise._awakeType = keyword;
+  nextPromise._awakeFunc = fn;
+  if (self._state !== StateList.pending) {
+    asyncFn(() => {
+      nextPromise._awake(self._state, self._result);
+    });
+  }
+  else {
+    if (!self._nextCount) {
+      self.next = [nextPromise];
+      self._nextCount = true;
+    }
+    else {
+      self.next.push(nextPromise);
+    }
+  }
+  return nextPromise;
+}
+
 class Promise {
   constructor(fn) {
     // next是用于存储then/catch的列表
-    this.next = [];
+    this.next = null;
+    this._nextCount = false;
     this._result = null;
     this._state = StateList.pending;
     this._awakeType = null;
     this._awakeFunc = null;
-    if (fn !== noop) {
-      const result = tryCallTwo(fn, this._resolve.bind(this), this._reject.bind(this));
-      result === IS_ERROR && this._reject(LAST_ERROR);
-    }
+    resolve(this, fn);
   }
   _awake(type, result) {
-    if (this._state & (StateList.resolved | StateList.rejected)) return;
+    if (this._state !== StateList.pending) return;
     if (this._awakeType === type && typeof this._awakeFunc === 'function') {
-      let awakeResult = tryCallOne(this._awakeFunc, result);
+      var awakeResult = tryCallOne(this._awakeFunc, result);
+      this._awakeFunc = null;
+      this._awakeType = null;
       if (awakeResult === IS_ERROR) {
         return this._reject(LAST_ERROR);
       }
-      const err = tryCallOne(this._resolve.bind(this), awakeResult);
-      if (err === IS_ERROR) {
-        return this._reject(LAST_ERROR);
-      }
+      const res = tryCallOne(this._resolve.bind(this), awakeResult);
+      res === IS_ERROR && this._reject(LAST_ERROR);
     }
     else {
-      const err = tryCallOne(this[type].bind(this), result);
+      const err = tryCallOne(this[keywords[type]].bind(this), result);
       if (err === IS_ERROR) {
         this._reject(LAST_ERROR);
       }
     }
   }
-  _next(keyword, fn) {
-    const nextPromise = new Promise(noop);
-    nextPromise._awakeType = keyword;
-    nextPromise._awakeFunc = fn;
-    if (this._state !== StateList.pending) {
-      asyncFn(() => {
-        nextPromise._awake(keywords[this._state], this._result);
-      });
-    }
-    else {
-      this.next.push(nextPromise);
-    }
-    return nextPromise;
-  }
   then(fn, fn1) {
-    return this._next(keywords[StateList.resolved], fn).catch(fn1);
+    const result= _next(this, StateList.resolved, fn);
+    if (typeof fn1 === 'function') return _next(result, StateList.rejected, fn1);
+    return result;
   }
   catch(fn) {
-    if (fn === undefined) return this;
-    return this._next(keywords[StateList.rejected], fn);
-  }
-  // 在以下时刻：
-  //  a. 在promise内部状态改变的时刻
-  //  b. 新增then/catch之时
-  //  c. then/catch返回之后，生成新的promise，将后续的then/catch传递给promise
-  // 可能需要去执行this.next里面的回调函数
-  //
-  _checkState() {
-    if (this._state !== StateList.pending) {
-      asyncFn(() => {
-        const keyword = keywords[this._state];
-        this.next.forEach(pro => pro._awake(keyword, this._result));
-        this.next.length = 0;
-      });
-    }
+    return _next(this, StateList.rejected, fn);
   }
   _resolve(res) {
     if (this._state !== StateList.pending)  return;
@@ -142,13 +165,16 @@ class Promise {
     }
     if (res instanceof Promise) {
       res.next = this.next;
-      this.then = res.then.bind(res);
-      this.catch = res.catch.bind(res);
-      res._checkState();
+      res._nextCount = this._nextCount;
+      this.next = null;
+      this._nextCount = null;
+      this._result = res;
+      this._state = StateList.delegated;
+      _checkState(res);
       return;
     }
     if ((typeof res === 'object' && res !== null) || (typeof res === 'function')) {
-      let invoked = false;
+      var invoked = false;
       try {
         const then = res.then;
         if (typeof then === 'function') {
@@ -177,13 +203,13 @@ class Promise {
     }
     this._result = res;
     this._state = StateList.resolved;
-    this._checkState();
+    _checkState(this);
   }
   _reject(err) {
-    if (this._state & (StateList.resolved | StateList.rejected)) return;
+    if (this._state !== StateList.pending) return;
     this._result = err;
     this._state = StateList.rejected;
-    this._checkState();
+    _checkState(this);
   }
 }
 
@@ -202,7 +228,7 @@ Promise.reject = function (err) {
 
 Promise.all = function (promiseList) {
   return new Promise(function (resolve, reject) {
-    let pendingLength = promiseList.length;
+    var pendingLength = promiseList.length;
     if (pendingLength === 0) return Promise.resolve(promiseList);
     const result = [];
     promiseList.forEach((pro, index) => pro.then((res) => {
@@ -218,7 +244,7 @@ Promise.all = function (promiseList) {
 Promise.race = function (promiseList) {
   return new Promise(function (resolve, reject) {
     const promiseLength = promiseList.length;
-    let state = 0;
+    var state = 0;
     if (promiseLength < 1) throw Error('At least one promise!');
     promiseList.forEach((pro, index) => pro.then((res) => {
       if (state === 0) resolve(res);
