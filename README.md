@@ -4,7 +4,7 @@
 
 [![Build Status](https://travis-ci.org/renaesop/simple-promise.svg?branch=master)](https://travis-ci.org/renaesop/simple-promise)
 [![Build status](https://ci.appveyor.com/api/projects/status/ikn39wiu3fbh08uy/branch/master?svg=true)](https://ci.appveyor.com/project/renaesop/simple-promise/branch/master)
-
+[![Promise/A+ Logo](https://promisesaplus.com/)](https://promisesaplus.com/assets/logo-small.png)
 
 
 ## 实现的主要思路
@@ -36,47 +36,60 @@
 
 ## benchmark & memory
 
-bluebird
+#### bluebird
 ````
 --------start bluebird---------
 Start benchmark!
 Memory usage at start is
-{ rss: 33939456, heapTotal: 16773120, heapUsed: 4890344 }
+{ rss: 33701888, heapTotal: 16773120, heapUsed: 4861952 }
 Memory usage at end is
-{ rss: 33964032, heapTotal: 16773120, heapUsed: 4890592 }
-Total time 420 ms!
-````
+{ rss: 33718272, heapTotal: 16773120, heapUsed: 4862200 }
+Total time 386 ms!
+`````
 
-promise
+#### promise
+
 ````
 --------start then promise---------
 Start benchmark!
 Memory usage at start is
-{ rss: 32145408, heapTotal: 15724544, heapUsed: 4111272 }
+{ rss: 32088064, heapTotal: 15724544, heapUsed: 4077552 }
 Memory usage at end is
-{ rss: 57315328, heapTotal: 40890368, heapUsed: 4122216 }
-Total time 366 ms!
-
+{ rss: 57253888, heapTotal: 40890368, heapUsed: 4088480 }
+Total time 371 ms!
 ````
-this repo
+
+#### simple-pormise(this repo)
 ````
 --------start simple-promise---------
 Start benchmark!
 Memory usage at start is
-{ rss: 59658240, heapTotal: 42987520, heapUsed: 7120616 }
+{ rss: 60047360, heapTotal: 41938944, heapUsed: 7242584 }
 Memory usage at end is
-{ rss: 62361600, heapTotal: 44036096, heapUsed: 6760264 }
-Total time 5138 ms!
-
+{ rss: 61419520, heapTotal: 44036096, heapUsed: 7222720 }
+Total time 2172 ms!
 ````
 
-es6 promise
+#### es(es6)
 ````
 --------start es---------
+
 Start benchmark!
 Memory usage at start is
-{ rss: 152707072, heapTotal: 135262208, heapUsed: 97403720 }
+{ rss: 152784896, heapTotal: 135262208, heapUsed: 97369552 }
 Memory usage at end is
-{ rss: 1006002176, heapTotal: 988803072, heapUsed: 939538168 }
-Total time 8272 ms!
+{ rss: 1006039040, heapTotal: 988803072, heapUsed: 939507128 }
+Total time 9287 ms!
+````
+
+#### mimi-promise
+````
+--------start mimi-promise---------
+
+Start benchmark!
+Memory usage at start is
+{ rss: 117932032, heapTotal: 99610624, heapUsed: 63493432 }
+Memory usage at end is
+{ rss: 656711680, heapTotal: 637530112, heapUsed: 574386816 }
+Total time 4537 ms!
 ````
