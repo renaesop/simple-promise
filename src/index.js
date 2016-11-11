@@ -1,30 +1,6 @@
 /**
  * Created by fed on 2016/10/31.
  */
-/**
- * 主要思路
- * 1. 向promise注册的回调，称呼为nextObjectArray
- * 2. promise的then方法可以被多次调用，也就是说nextObjectArray需要是数组，
- *    单个回调称为nextObject
- * 3. 可以向promise注册至少两种回调，也就是nextObject至少需要两个字段
- *    {
- *      type: 'then' | 'catch',
- *      fn: res => any
- *    }
- * 4. promise.then可以链式调用，而返回this不现实，也就是说nextObject需要是一个链表
- *    {
- *      type: 'then' | 'catch',
- *      fn: res => any,
- *      next: NextObjectArray
- *    }
- * 5. 执行promise的回调时，要遍历nextObjectArray中的每一项nextObject，直到在nextObject链中找到
- *    第一个符合回调类型的nextObject
- * 6. nextObject中的fn执行完毕之后，将其转化为promise
- * 7. 在如下时刻检查是否需要执行回调
- *  a. promise状态改变
- *  b. promise.then被调用
- *  c. nextObject中的fn执行完毕，生成新的promise，将nextObject传递给新的promise
- */
 const StateList = {
   pending: 1,
   resolved: 2,
