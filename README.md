@@ -4,6 +4,8 @@
 
 [![Build Status](https://travis-ci.org/renaesop/simple-promise.svg?branch=master)](https://travis-ci.org/renaesop/simple-promise)
 [![Build status](https://ci.appveyor.com/api/projects/status/ikn39wiu3fbh08uy/branch/master?svg=true)](https://ci.appveyor.com/project/renaesop/simple-promise/branch/master)
+[![dependencies Status](https://david-dm.org/renaesop/simple-promise/status.svg)](https://david-dm.org/renaesop/simple-promise)
+[![devDependencies Status](https://david-dm.org/renaesop/simple-promise/dev-status.svg)](https://david-dm.org/renaesop/simple-promise?type=dev)
 [![Promise/A+ Logo](https://promisesaplus.com/assets/logo-small.png)](https://promisesaplus.com/)
 
 项目已通过promise a plus test
